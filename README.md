@@ -31,7 +31,14 @@ npm run dev
 
 Open http://localhost:5173
 
-## Deploy for free (access from anywhere)
+## Live site
+
+After GitHub Pages deploys successfully:
+
+**https://rodrigogismondi.github.io/FWC26/**
+
+If deploy fails with a 404, confirm **Settings → Pages → Source: GitHub Actions**, then re-run the workflow under the **Actions** tab.
+
 
 ### Option A — GitHub Pages (recommended)
 
