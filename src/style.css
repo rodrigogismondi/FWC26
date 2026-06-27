@@ -1228,14 +1228,6 @@ a:hover {
   margin: 0;
 }
 
-.md-footnote {
-  margin: 1rem 0 0;
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  line-height: 1.45;
-  text-align: center;
-}
-
 .md-timeline {
   display: flex;
   flex-direction: column;

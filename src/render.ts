@@ -95,14 +95,15 @@ function renderSchedule(data: DashboardData, filter: string, lang: Lang): string
   else if (filter === "upcoming") matches = matches.filter(isMatchUpcoming);
   else if (filter === "finished") matches = matches.filter((m) => m.status === "finished");
 
-  const byDate = groupMatchesByDate(matches);
+  const descending = filter === "all" || filter === "finished";
+  const byDate = groupMatchesByDate(matches, descending);
 
   if (matches.length === 0) {
     return `<div class="empty-state"><p>${escapeHtml(t(lang, "noMatches"))}</p></div>`;
   }
 
   return [...byDate.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (descending ? b.localeCompare(a) : a.localeCompare(b)))
     .map(
       ([date, dayMatches]) => `
       <section class="day-section">

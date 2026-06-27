@@ -72,7 +72,7 @@ export function statusLabel(status: Match["status"], lang: Lang): string {
   }
 }
 
-export function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
+export function groupMatchesByDate(matches: Match[], descending = false): Map<string, Match[]> {
   const map = new Map<string, Match[]>();
   for (const m of matches) {
     const key = localDateKey(m.datetime);
@@ -81,7 +81,7 @@ export function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
     map.set(key, list);
   }
   for (const list of map.values()) {
-    list.sort((a, b) => a.datetime - b.datetime);
+    list.sort((a, b) => (descending ? b.datetime - a.datetime : a.datetime - b.datetime));
   }
   return map;
 }

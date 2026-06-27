@@ -45,7 +45,7 @@ export function buildTimeline(detail: MatchDetail): TimelineEvent[] {
     });
   }
 
-  return events.sort((a, b) => a.sortKey - b.sortKey || a.kind.localeCompare(b.kind));
+  return events.sort((a, b) => b.sortKey - a.sortKey || a.kind.localeCompare(b.kind));
 }
 
 function statLabel(keyEn: string, lang: Lang): string {
@@ -249,7 +249,6 @@ export function renderMatchDetailPanel(
         </nav>
         <div class="md-body">
           ${tabBody}
-          <p class="md-footnote">${escapeHtml(t(lang, "mdLineupNote"))}</p>
         </div>
       </div>
     </div>`;

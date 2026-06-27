@@ -90,7 +90,6 @@ const strings = {
     mdGoal: "Goal · {player}",
     mdYellowCard: "Yellow card · {player}",
     mdRedCard: "Red card · {player}",
-    mdLineupNote: "Lineups, substitutions, and play-by-play text are not provided by our free data sources.",
     mdLoading: "Loading match details…",
   },
   pt: {
@@ -172,7 +171,6 @@ const strings = {
     mdGoal: "Gol · {player}",
     mdYellowCard: "Cartão amarelo · {player}",
     mdRedCard: "Cartão vermelho · {player}",
-    mdLineupNote: "Escalação, substituições e narração ao vivo não estão disponíveis nas fontes gratuitas.",
     mdLoading: "Carregando detalhes do jogo…",
   },
 } as const;
