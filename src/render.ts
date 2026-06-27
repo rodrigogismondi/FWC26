@@ -95,7 +95,7 @@ function renderSchedule(data: DashboardData, filter: string, lang: Lang): string
   else if (filter === "upcoming") matches = matches.filter(isMatchUpcoming);
   else if (filter === "finished") matches = matches.filter((m) => m.status === "finished");
 
-  const descending = filter === "all" || filter === "finished";
+  const descending = filter === "finished";
   const byDate = groupMatchesByDate(matches, descending);
 
   if (matches.length === 0) {
