@@ -26,24 +26,32 @@ export function isMatchUpcoming(m: Match): boolean {
 
 export function formatKickoff(match: Match, lang: Lang): string {
   const d = new Date(match.datetime * 1000);
-  return d.toLocaleString(LOCALE[lang], {
+  const formatted = d.toLocaleString(LOCALE[lang], {
     weekday: "short",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
+  return capitalizeLocale(formatted, lang);
 }
 
 export function formatDateHeader(localKey: string, lang: Lang): string {
   const [y, mo, d] = localKey.split("-").map(Number);
   const date = new Date(y, mo - 1, d);
-  return date.toLocaleDateString(LOCALE[lang], {
+  const formatted = date.toLocaleDateString(LOCALE[lang], {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+  return capitalizeLocale(formatted, lang);
+}
+
+/** pt-BR locale lowercases weekdays; capitalize to match en-US style. */
+function capitalizeLocale(text: string, lang: Lang): string {
+  if (lang !== "pt" || !text) return text;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 export function formatScore(match: Match): string {

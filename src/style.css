@@ -785,11 +785,14 @@ a:hover {
 }
 
 .bk-slot-tbd {
-  background: rgba(128, 40, 60, 0.45);
-  border-color: rgba(160, 60, 80, 0.5);
-  color: #f0d0d8;
-  font-size: 0.65rem;
-  font-weight: 600;
+  background: rgba(128, 40, 60, 0.35);
+  border-color: rgba(160, 60, 80, 0.4);
+}
+
+.bk-slot-empty {
+  min-height: 28px;
+  min-width: 80px;
+  padding: 0;
 }
 
 .bk-slot-winner {

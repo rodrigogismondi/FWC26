@@ -1,5 +1,6 @@
 import { renderVisualBracket } from "./bracket";
 import type { DashboardData } from "./api";
+import { translateTeamName } from "./countries";
 import {
   FLAG_BR,
   FLAG_US,
@@ -54,12 +55,12 @@ function renderMatchRow(m: Match, lang: Lang, compact = false): string {
       <div class="match-teams">
         <div class="team-row ${m.score && m.score[0] > m.score[1] ? "team-winner" : ""}">
           ${flagImg(m.flag1, m.team1)}
-          <span class="team-name">${escapeHtml(m.team1)}</span>
+          <span class="team-name">${escapeHtml(translateTeamName(m.team1, lang))}</span>
           ${m.score ? `<span class="team-score">${m.score[0]}</span>` : ""}
         </div>
         <div class="team-row ${m.score && m.score[1] > m.score[0] ? "team-winner" : ""}">
           ${flagImg(m.flag2, m.team2)}
-          <span class="team-name">${escapeHtml(m.team2)}</span>
+          <span class="team-name">${escapeHtml(translateTeamName(m.team2, lang))}</span>
           ${m.score ? `<span class="team-score">${m.score[1]}</span>` : ""}
         </div>
       </div>
@@ -103,7 +104,7 @@ function renderLive(data: DashboardData, lang: Lang): string {
         <p class="empty-title">${escapeHtml(t(lang, "noLiveTitle"))}</p>
         ${
           next
-            ? `<p class="empty-sub">${escapeHtml(t(lang, "nextUp"))}: <strong>${escapeHtml(next.team1)} vs ${escapeHtml(next.team2)}</strong><br/>${escapeHtml(formatKickoff(next, lang))}</p>`
+            ? `<p class="empty-sub">${escapeHtml(t(lang, "nextUp"))}: <strong>${escapeHtml(translateTeamName(next.team1, lang))} vs ${escapeHtml(translateTeamName(next.team2, lang))}</strong><br/>${escapeHtml(formatKickoff(next, lang))}</p>`
             : ""
         }
       </div>
@@ -152,7 +153,7 @@ function renderGroupTable(g: GroupTable, lang: Lang): string {
             <tr class="${i < 2 ? "qualifying" : i === 2 ? "third-place" : ""}">
               <td class="team-cell">
                 ${team.flag ? `<img class="flag-sm" src="${escapeHtml(team.flag)}" alt="" width="20" height="14" />` : ""}
-                ${escapeHtml(team.name)}
+                ${escapeHtml(translateTeamName(team.name, lang))}
               </td>
               <td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td>
               <td>${team.goalsFor}</td><td>${team.goalsAgainst}</td>
