@@ -1,6 +1,8 @@
 import { renderVisualBracket } from "./bracket";
 import type { DashboardData } from "./api";
 import { translateTeamName } from "./countries";
+import { renderMatchDetailPanel } from "./match-detail";
+import type { MatchDetail, MatchDetailTab } from "./match-detail-types";
 import { buildMatchById, resolveTeamSlot } from "./team-resolve";
 import {
   FLAG_BR,
@@ -64,7 +66,7 @@ function renderMatchRow(m: Match, lang: Lang, compact = false, matchById?: Map<n
       </div>`;
 
   return `
-    <article class="match-card ${m.status === "live" ? "match-card-live" : ""}" data-id="${m.id}">
+    <article class="match-card match-card-clickable ${m.status === "live" ? "match-card-live" : ""}" data-id="${m.id}" data-action="open-match" data-match-id="${m.id}" role="button" tabindex="0">
       ${meta}
       <div class="match-teams">
         <div class="team-row ${m.score && m.score[0] > m.score[1] ? "team-winner" : ""}">
@@ -213,6 +215,28 @@ export interface AppState {
   data: DashboardData | null;
   loading: boolean;
   error: string | null;
+  selectedMatchId: number | null;
+  matchDetail: MatchDetail | null;
+  matchDetailLoading: boolean;
+  matchDetailTab: MatchDetailTab;
+}
+
+function renderMatchDetailOverlay(state: AppState): string {
+  if (!state.selectedMatchId || !state.data) return "";
+
+  if (state.matchDetailLoading) {
+    return `
+      <div class="md-panel md-panel-loading" role="dialog" aria-modal="true">
+        <div class="md-backdrop" data-action="close-match"></div>
+        <div class="md-sheet md-sheet-compact">
+          <div class="loading"><div class="spinner"></div><p>${escapeHtml(t(state.lang, "mdLoading"))}</p></div>
+        </div>
+      </div>`;
+  }
+
+  if (!state.matchDetail) return "";
+
+  return renderMatchDetailPanel(state.matchDetail, state.matchDetailTab, state.data, state.lang);
 }
 
 export function renderApp(state: AppState): string {
@@ -287,7 +311,8 @@ export function renderApp(state: AppState): string {
       <footer class="footer">
         <p>${footerHtml}</p>
       </footer>
-    </div>`;
+    </div>
+    ${renderMatchDetailOverlay(state)}`;
 }
 
 function navItem(id: ViewId, lang: Lang, current: ViewId, badge?: number): string {

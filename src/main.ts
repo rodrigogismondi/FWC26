@@ -1,6 +1,7 @@
-import { fetchDashboard } from "./api";
+import { fetchDashboard, fetchMatchDetail, matchSummaryFromList } from "./api";
 import { detectLang, LOCALE, saveLang, type Lang } from "./i18n";
 import { renderApp, type AppState } from "./render";
+import type { MatchDetailTab } from "./match-detail-types";
 import type { ViewId } from "./types";
 import "./style.css";
 
@@ -14,6 +15,10 @@ let state: AppState = {
   data: null,
   loading: true,
   error: null,
+  selectedMatchId: null,
+  matchDetail: null,
+  matchDetailLoading: false,
+  matchDetailTab: "events",
 };
 
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -29,6 +34,52 @@ function mount(): void {
     if (state.view === "bracket") centerBracketScroll(root);
   };
 
+  const loadMatchDetail = async (id: number, silent = false) => {
+    if (!silent) {
+      state = { ...state, matchDetailLoading: true, matchDetail: null };
+      paint();
+    }
+    try {
+      const detail = await fetchMatchDetail(id);
+      const fallback = state.data?.all.find((m) => m.id === id);
+      state = {
+        ...state,
+        matchDetail: detail ?? (fallback ? matchSummaryFromList(fallback) : null),
+        matchDetailLoading: false,
+      };
+    } catch {
+      const fallback = state.data?.all.find((m) => m.id === id);
+      state = {
+        ...state,
+        matchDetail: fallback ? matchSummaryFromList(fallback) : null,
+        matchDetailLoading: false,
+      };
+    }
+    paint();
+  };
+
+  const openMatch = (id: number) => {
+    state = {
+      ...state,
+      selectedMatchId: id,
+      matchDetailTab: "events",
+      matchDetail: null,
+      matchDetailLoading: true,
+    };
+    paint();
+    loadMatchDetail(id);
+  };
+
+  const closeMatch = () => {
+    state = {
+      ...state,
+      selectedMatchId: null,
+      matchDetail: null,
+      matchDetailLoading: false,
+    };
+    paint();
+  };
+
   const load = async (silent = false) => {
     if (!silent) state = { ...state, loading: true, error: null };
     else state = { ...state, loading: true };
@@ -38,6 +89,9 @@ function mount(): void {
       const data = await fetchDashboard();
       state = { ...state, data, loading: false, error: null };
       scheduleRefresh(data.live.length > 0);
+      if (state.selectedMatchId) {
+        await loadMatchDetail(state.selectedMatchId, true);
+      }
     } catch (err) {
       state = {
         ...state,
@@ -78,6 +132,33 @@ function mount(): void {
         if (lang === state.lang) return;
         state = { ...state, lang };
         saveLang(lang);
+        paint();
+      });
+    });
+
+    root.querySelectorAll('[data-action="open-match"]').forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = Number((el as HTMLElement).dataset.matchId);
+        if (id) openMatch(id);
+      });
+      el.addEventListener("keydown", (e) => {
+        const key = (e as KeyboardEvent).key;
+        if (key === "Enter" || key === " ") {
+          e.preventDefault();
+          const id = Number((el as HTMLElement).dataset.matchId);
+          if (id) openMatch(id);
+        }
+      });
+    });
+
+    root.querySelectorAll('[data-action="close-match"]').forEach((el) => {
+      el.addEventListener("click", () => closeMatch());
+    });
+
+    root.querySelectorAll('[data-action="md-tab"]').forEach((el) => {
+      el.addEventListener("click", () => {
+        const tab = (el as HTMLElement).dataset.mdTab as MatchDetailTab;
+        if (tab) state = { ...state, matchDetailTab: tab };
         paint();
       });
     });

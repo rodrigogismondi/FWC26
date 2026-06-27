@@ -1,4 +1,5 @@
 import type { GroupTable, Match, MatchStatus, Team } from "./types";
+import type { MatchCard, MatchDetail, MatchGoal, MatchStatRow } from "./match-detail-types";
 import { isMatchToday, isMatchUpcoming } from "./utils";
 
 const WCUP_BASE = "https://wcup2026.org/api/data.php";
@@ -19,6 +20,25 @@ interface WcupMatch {
   time: string;
   datetime: number;
   ground: string;
+}
+
+interface WcupMatchDetail extends WcupMatch {
+  ht?: [number, number];
+  goals1?: MatchGoal[];
+  goals2?: MatchGoal[];
+  cards?: Array<{
+    team: number;
+    minute: number;
+    name: string;
+    type: string;
+    reason_en?: string;
+  }>;
+  stats?: Array<{ k_en: string; v: [number, number]; unit: string }>;
+}
+
+interface WcupMatchDetailResponse {
+  ok: boolean;
+  match?: WcupMatchDetail;
 }
 
 interface WcupResponse {
@@ -109,6 +129,49 @@ export async function fetchUpcoming(limit = 20): Promise<Match[]> {
 export async function fetchRecentResults(limit = 10): Promise<Match[]> {
   const raw = await fetchWcup("results", { limit: String(limit) });
   return raw.map(mapMatch);
+}
+
+function mapMatchDetail(raw: WcupMatchDetail): MatchDetail {
+  const base = mapMatch(raw);
+  const cards: MatchCard[] = (raw.cards ?? []).map((c) => ({
+    team: c.team === 2 ? 2 : 1,
+    minute: c.minute,
+    name: c.name,
+    type: c.type === "red" ? "red" : "yellow",
+    reasonEn: c.reason_en,
+  }));
+  const stats: MatchStatRow[] = (raw.stats ?? []).map((s) => ({
+    keyEn: s.k_en,
+    values: s.v,
+    unit: s.unit ?? "",
+  }));
+  return {
+    ...base,
+    halfTime: raw.ht ?? null,
+    goals1: raw.goals1 ?? [],
+    goals2: raw.goals2 ?? [],
+    cards,
+    stats,
+  };
+}
+
+export async function fetchMatchDetail(id: number): Promise<MatchDetail | null> {
+  const res = await fetch(`${WCUP_BASE}?action=match&id=${id}`);
+  if (!res.ok) throw new Error(`wcup2026 match: HTTP ${res.status}`);
+  const data = (await res.json()) as WcupMatchDetailResponse;
+  if (!data.ok || !data.match) return null;
+  return mapMatchDetail(data.match);
+}
+
+export function matchSummaryFromList(m: Match): MatchDetail {
+  return {
+    ...m,
+    halfTime: null,
+    goals1: [],
+    goals2: [],
+    cards: [],
+    stats: [],
+  };
 }
 
 export async function fetchTeams(): Promise<Team[]> {
