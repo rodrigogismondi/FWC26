@@ -1,6 +1,7 @@
 import { renderVisualBracket } from "./bracket";
 import type { DashboardData } from "./api";
 import { translateTeamName } from "./countries";
+import { buildMatchById, resolveTeamSlot } from "./team-resolve";
 import {
   FLAG_BR,
   FLAG_US,
@@ -32,7 +33,20 @@ function flagImg(src: string, alt: string): string {
   return `<img class="flag" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" width="28" height="20" />`;
 }
 
-function renderMatchRow(m: Match, lang: Lang, compact = false): string {
+function renderMatchRow(m: Match, lang: Lang, compact = false, matchById?: Map<number, Match>, groups?: DashboardData["groups"]): string {
+  const resolved1 =
+    matchById && groups
+      ? resolveTeamSlot(m.team1, m.flag1, m.id, matchById, groups)
+      : { label: m.team1, flag: m.flag1, isPlaceholder: false };
+  const resolved2 =
+    matchById && groups
+      ? resolveTeamSlot(m.team2, m.flag2, m.id, matchById, groups)
+      : { label: m.team2, flag: m.flag2, isPlaceholder: false };
+  const name1 = translateTeamName(resolved1.label, lang);
+  const name2 = translateTeamName(resolved2.label, lang);
+  const flag1 = resolved1.flag || m.flag1;
+  const flag2 = resolved2.flag || m.flag2;
+
   const liveBadge =
     m.status === "live"
       ? `<span class="badge badge-live">${m.liveMinute != null ? `${m.liveMinute}'` : t(lang, "statusLive")}</span>`
@@ -54,13 +68,13 @@ function renderMatchRow(m: Match, lang: Lang, compact = false): string {
       ${meta}
       <div class="match-teams">
         <div class="team-row ${m.score && m.score[0] > m.score[1] ? "team-winner" : ""}">
-          ${flagImg(m.flag1, m.team1)}
-          <span class="team-name">${escapeHtml(translateTeamName(m.team1, lang))}</span>
+          ${flagImg(flag1, name1)}
+          <span class="team-name">${escapeHtml(name1)}</span>
           ${m.score ? `<span class="team-score">${m.score[0]}</span>` : ""}
         </div>
         <div class="team-row ${m.score && m.score[1] > m.score[0] ? "team-winner" : ""}">
-          ${flagImg(m.flag2, m.team2)}
-          <span class="team-name">${escapeHtml(translateTeamName(m.team2, lang))}</span>
+          ${flagImg(flag2, name2)}
+          <span class="team-name">${escapeHtml(name2)}</span>
           ${m.score ? `<span class="team-score">${m.score[1]}</span>` : ""}
         </div>
       </div>
@@ -72,6 +86,7 @@ function renderMatchRow(m: Match, lang: Lang, compact = false): string {
 }
 
 function renderSchedule(data: DashboardData, filter: string, lang: Lang): string {
+  const matchById = buildMatchById(data.all);
   let matches = data.all;
   if (filter === "live") matches = matches.filter((m) => m.status === "live");
   else if (filter === "today") matches = matches.filter(isMatchToday);
@@ -90,27 +105,34 @@ function renderSchedule(data: DashboardData, filter: string, lang: Lang): string
       ([date, dayMatches]) => `
       <section class="day-section">
         <h3 class="day-header">${escapeHtml(formatDateHeader(date, lang))}</h3>
-        <div class="match-grid">${dayMatches.map((m) => renderMatchRow(m, lang)).join("")}</div>
+        <div class="match-grid">${dayMatches.map((m) => renderMatchRow(m, lang, false, matchById, data.groups)).join("")}</div>
       </section>`
     )
     .join("");
 }
 
 function renderLive(data: DashboardData, lang: Lang): string {
+  const matchById = buildMatchById(data.all);
   if (data.live.length === 0) {
     const next = data.upcoming[0];
+    const next1 = next
+      ? translateTeamName(resolveTeamSlot(next.team1, next.flag1, next.id, matchById, data.groups).label, lang)
+      : "";
+    const next2 = next
+      ? translateTeamName(resolveTeamSlot(next.team2, next.flag2, next.id, matchById, data.groups).label, lang)
+      : "";
     return `
       <div class="empty-state">
         <p class="empty-title">${escapeHtml(t(lang, "noLiveTitle"))}</p>
         ${
           next
-            ? `<p class="empty-sub">${escapeHtml(t(lang, "nextUp"))}: <strong>${escapeHtml(translateTeamName(next.team1, lang))} vs ${escapeHtml(translateTeamName(next.team2, lang))}</strong><br/>${escapeHtml(formatKickoff(next, lang))}</p>`
+            ? `<p class="empty-sub">${escapeHtml(t(lang, "nextUp"))}: <strong>${escapeHtml(next1)} vs ${escapeHtml(next2)}</strong><br/>${escapeHtml(formatKickoff(next, lang))}</p>`
             : ""
         }
       </div>
       <section class="section-block">
         <h3>${escapeHtml(t(lang, "recentResults"))}</h3>
-        <div class="match-grid">${data.recent.map((m) => renderMatchRow(m, lang, true)).join("")}</div>
+        <div class="match-grid">${data.recent.map((m) => renderMatchRow(m, lang, true, matchById, data.groups)).join("")}</div>
       </section>`;
   }
 
@@ -121,10 +143,10 @@ function renderLive(data: DashboardData, lang: Lang): string {
       <span class="pulse"></span>
       ${escapeHtml(t(lang, progressKey, { n: data.live.length }))}
     </div>
-    <div class="match-grid match-grid-live">${data.live.map((m) => renderMatchRow(m, lang)).join("")}</div>
+    <div class="match-grid match-grid-live">${data.live.map((m) => renderMatchRow(m, lang, false, matchById, data.groups)).join("")}</div>
     <section class="section-block">
       <h3>${escapeHtml(t(lang, "alsoToday"))}</h3>
-      <div class="match-grid">${data.all.filter((m) => isMatchToday(m) && m.status !== "live").map((m) => renderMatchRow(m, lang, true)).join("") || `<p class='muted'>${escapeHtml(t(lang, "noOtherToday"))}</p>`}</div>
+      <div class="match-grid">${data.all.filter((m) => isMatchToday(m) && m.status !== "live").map((m) => renderMatchRow(m, lang, true, matchById, data.groups)).join("") || `<p class='muted'>${escapeHtml(t(lang, "noOtherToday"))}</p>`}</div>
     </section>`;
 }
 

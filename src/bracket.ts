@@ -1,8 +1,8 @@
 import type { DashboardData } from "./api";
 import type { GroupTable, Match } from "./types";
-import { isPlaceholderTeam } from "./types";
 import { translateTeamName } from "./countries";
 import { t, translateRound, type Lang } from "./i18n";
+import { buildMatchById, resolveTeamSlot } from "./team-resolve";
 import { escapeHtml, formatKickoff, formatScore, teamInitials } from "./utils";
 
 export interface BracketSlot {
@@ -71,11 +71,6 @@ function normalizeRound(round: string): string {
   return round;
 }
 
-/** API stores W## using FIFA match numbers; our ids are FIFA # − 1. */
-function winnerRefToId(fifaMatchNum: number): number {
-  return fifaMatchNum - 1;
-}
-
 function getWinnerName(m: Match): string | null {
   if (m.status !== "finished" || !m.score) return null;
   if (m.score[0] > m.score[1]) return m.team1;
@@ -83,83 +78,20 @@ function getWinnerName(m: Match): string | null {
   return null;
 }
 
-function getWinnerFlag(m: Match): string {
-  if (!m.score) return "";
-  if (m.score[0] > m.score[1]) return m.flag1;
-  if (m.score[1] > m.score[0]) return m.flag2;
-  return "";
-}
-
-function resolveGroupSlot(code: string, groups: GroupTable[]): { name: string; flag: string } | null {
-  const m = code.match(/^([12])([A-L])$/);
-  if (!m) return null;
-  const rank = Number(m[1]) - 1;
-  const group = groups.find((g) => g.name === m[2]);
-  if (!group || !group.teams[rank]) return null;
-  return { name: group.teams[rank].name, flag: group.teams[rank].flag };
-}
-
-function resolveTeamLabel(
-  raw: string,
-  flag: string,
-  matchById: Map<number, Match>,
-  groups: GroupTable[]
-): BracketSlot {
-  const wMatch = raw.match(/^W(\d+)$/);
-  if (wMatch) {
-    const src = matchById.get(winnerRefToId(Number(wMatch[1])));
-    if (src) {
-      const winner = getWinnerName(src);
-      if (winner) {
-        return {
-          label: winner,
-          flag: getWinnerFlag(src),
-          isPlaceholder: false,
-          isWinner: true,
-        };
-      }
-    }
-    return { label: "", flag: "", isPlaceholder: true };
-  }
-
-  const lMatch = raw.match(/^L(\d+)$/);
-  if (lMatch) {
-    const src = matchById.get(winnerRefToId(Number(lMatch[1])));
-    if (src) {
-      const winner = getWinnerName(src);
-      if (winner) {
-        const loser = winner === src.team1 ? src.team2 : src.team1;
-        const loserFlag = winner === src.team1 ? src.flag2 : src.flag1;
-        return { label: loser, flag: loserFlag, isPlaceholder: false };
-      }
-    }
-    return { label: "", flag: "", isPlaceholder: true };
-  }
-
-  const groupResolved = resolveGroupSlot(raw, groups);
-  if (groupResolved) {
-    return { label: groupResolved.name, flag: groupResolved.flag, isPlaceholder: false };
-  }
-
-  if (isPlaceholderTeam(raw)) {
-    return { label: "", flag: "", isPlaceholder: true };
-  }
-
-  return { label: raw, flag: flag || "", isPlaceholder: false };
-}
-
 function toBracketMatch(m: Match, matchById: Map<number, Match>, groups: GroupTable[]): BracketMatch {
   const winner = getWinnerName(m);
+  const slot1 = resolveTeamSlot(m.team1, m.flag1, m.id, matchById, groups);
+  const slot2 = resolveTeamSlot(m.team2, m.flag2, m.id, matchById, groups);
   return {
     id: m.id,
     round: normalizeRound(m.round),
     team1: {
-      ...resolveTeamLabel(m.team1, m.flag1, matchById, groups),
+      ...slot1,
       isWinner: winner === m.team1,
       score: m.score?.[0],
     },
     team2: {
-      ...resolveTeamLabel(m.team2, m.flag2, matchById, groups),
+      ...slot2,
       isWinner: winner === m.team2,
       score: m.score?.[1],
     },
@@ -342,8 +274,8 @@ function countConfirmedR32(matchById: Map<number, Match>, groups: GroupTable[]):
   for (let id = 72; id <= 87; id++) {
     const m = matchById.get(id);
     if (!m) continue;
-    const s1 = resolveTeamLabel(m.team1, m.flag1, matchById, groups);
-    const s2 = resolveTeamLabel(m.team2, m.flag2, matchById, groups);
+    const s1 = resolveTeamSlot(m.team1, m.flag1, m.id, matchById, groups);
+    const s2 = resolveTeamSlot(m.team2, m.flag2, m.id, matchById, groups);
     if (!s1.isPlaceholder) count++;
     if (!s2.isPlaceholder) count++;
   }
@@ -351,8 +283,7 @@ function countConfirmedR32(matchById: Map<number, Match>, groups: GroupTable[]):
 }
 
 export function renderVisualBracket(data: DashboardData, lang: Lang): string {
-  const matchById = new Map<number, Match>();
-  for (const m of data.all) matchById.set(m.id, m);
+  const matchById = buildMatchById(data.all);
 
   const r32 = data.all.filter((m) => m.round === "Round of 32");
   if (r32.length === 0) {
