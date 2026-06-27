@@ -1,5 +1,15 @@
 import { renderVisualBracket } from "./bracket";
 import type { DashboardData } from "./api";
+import {
+  FLAG_BR,
+  FLAG_US,
+  filterLabel,
+  navLabel,
+  t,
+  translateGroup,
+  translateRound,
+  type Lang,
+} from "./i18n";
 import type { GroupTable, Match, ViewId } from "./types";
 import {
   escapeHtml,
@@ -21,17 +31,20 @@ function flagImg(src: string, alt: string): string {
   return `<img class="flag" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" width="28" height="20" />`;
 }
 
-function renderMatchRow(m: Match, compact = false): string {
+function renderMatchRow(m: Match, lang: Lang, compact = false): string {
   const liveBadge =
     m.status === "live"
-      ? `<span class="badge badge-live">${m.liveMinute != null ? `${m.liveMinute}'` : "LIVE"}</span>`
-      : `<span class="badge badge-${m.status}">${statusLabel(m.status)}</span>`;
+      ? `<span class="badge badge-live">${m.liveMinute != null ? `${m.liveMinute}'` : t(lang, "statusLive")}</span>`
+      : `<span class="badge badge-${m.status}">${statusLabel(m.status, lang)}</span>`;
+
+  const round = translateRound(lang, m.round);
+  const group = m.group ? translateGroup(lang, m.group) : "";
 
   const meta = compact
-    ? `<span class="match-meta">${escapeHtml(m.round)}${m.group ? ` · ${escapeHtml(m.group)}` : ""}</span>`
+    ? `<span class="match-meta">${escapeHtml(round)}${group ? ` · ${escapeHtml(group)}` : ""}</span>`
     : `<div class="match-meta-block">
-        <span class="match-round">${escapeHtml(m.round)}</span>
-        ${m.group ? `<span class="match-group">${escapeHtml(m.group)}</span>` : ""}
+        <span class="match-round">${escapeHtml(round)}</span>
+        ${group ? `<span class="match-group">${escapeHtml(group)}</span>` : ""}
         <span class="match-venue">${escapeHtml(m.venue)}</span>
       </div>`;
 
@@ -52,12 +65,12 @@ function renderMatchRow(m: Match, compact = false): string {
       </div>
       <div class="match-footer">
         ${liveBadge}
-        <time class="match-time">${escapeHtml(m.status === "finished" ? formatScore(m) : formatKickoff(m))}</time>
+        <time class="match-time">${escapeHtml(m.status === "finished" ? formatScore(m) : formatKickoff(m, lang))}</time>
       </div>
     </article>`;
 }
 
-function renderSchedule(data: DashboardData, filter: string): string {
+function renderSchedule(data: DashboardData, filter: string, lang: Lang): string {
   let matches = data.all;
   if (filter === "live") matches = matches.filter((m) => m.status === "live");
   else if (filter === "today") matches = matches.filter(isMatchToday);
@@ -67,7 +80,7 @@ function renderSchedule(data: DashboardData, filter: string): string {
   const byDate = groupMatchesByDate(matches);
 
   if (matches.length === 0) {
-    return `<div class="empty-state"><p>No matches in this view right now.</p></div>`;
+    return `<div class="empty-state"><p>${escapeHtml(t(lang, "noMatches"))}</p></div>`;
   }
 
   return [...byDate.entries()]
@@ -75,66 +88,76 @@ function renderSchedule(data: DashboardData, filter: string): string {
     .map(
       ([date, dayMatches]) => `
       <section class="day-section">
-        <h3 class="day-header">${escapeHtml(formatDateHeader(date))}</h3>
-        <div class="match-grid">${dayMatches.map((m) => renderMatchRow(m)).join("")}</div>
+        <h3 class="day-header">${escapeHtml(formatDateHeader(date, lang))}</h3>
+        <div class="match-grid">${dayMatches.map((m) => renderMatchRow(m, lang)).join("")}</div>
       </section>`
     )
     .join("");
 }
 
-function renderLive(data: DashboardData): string {
+function renderLive(data: DashboardData, lang: Lang): string {
   if (data.live.length === 0) {
     const next = data.upcoming[0];
     return `
       <div class="empty-state">
-        <p class="empty-title">No live matches right now</p>
+        <p class="empty-title">${escapeHtml(t(lang, "noLiveTitle"))}</p>
         ${
           next
-            ? `<p class="empty-sub">Next up: <strong>${escapeHtml(next.team1)} vs ${escapeHtml(next.team2)}</strong><br/>${escapeHtml(formatKickoff(next))}</p>`
+            ? `<p class="empty-sub">${escapeHtml(t(lang, "nextUp"))}: <strong>${escapeHtml(next.team1)} vs ${escapeHtml(next.team2)}</strong><br/>${escapeHtml(formatKickoff(next, lang))}</p>`
             : ""
         }
       </div>
       <section class="section-block">
-        <h3>Recent results</h3>
-        <div class="match-grid">${data.recent.map((m) => renderMatchRow(m, true)).join("")}</div>
+        <h3>${escapeHtml(t(lang, "recentResults"))}</h3>
+        <div class="match-grid">${data.recent.map((m) => renderMatchRow(m, lang, true)).join("")}</div>
       </section>`;
   }
+
+  const progressKey = data.live.length === 1 ? "matchesInProgress" : "matchesInProgressPlural";
 
   return `
     <div class="live-banner">
       <span class="pulse"></span>
-      ${data.live.length} match${data.live.length > 1 ? "es" : ""} in progress
+      ${escapeHtml(t(lang, progressKey, { n: data.live.length }))}
     </div>
-    <div class="match-grid match-grid-live">${data.live.map((m) => renderMatchRow(m)).join("")}</div>
+    <div class="match-grid match-grid-live">${data.live.map((m) => renderMatchRow(m, lang)).join("")}</div>
     <section class="section-block">
-      <h3>Also today</h3>
-      <div class="match-grid">${data.all.filter((m) => isMatchToday(m) && m.status !== "live").map((m) => renderMatchRow(m, true)).join("") || "<p class='muted'>No other matches today.</p>"}</div>
+      <h3>${escapeHtml(t(lang, "alsoToday"))}</h3>
+      <div class="match-grid">${data.all.filter((m) => isMatchToday(m) && m.status !== "live").map((m) => renderMatchRow(m, lang, true)).join("") || `<p class='muted'>${escapeHtml(t(lang, "noOtherToday"))}</p>`}</div>
     </section>`;
 }
 
-function renderGroupTable(g: GroupTable): string {
+function renderGroupTable(g: GroupTable, lang: Lang): string {
   return `
     <div class="group-card">
-      <h3 class="group-title">Group ${escapeHtml(g.name)}</h3>
+      <h3 class="group-title">${escapeHtml(t(lang, "group"))} ${escapeHtml(g.name)}</h3>
       <table class="standings-table">
         <thead>
           <tr>
-            <th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th>
+            <th>${escapeHtml(t(lang, "colTeam"))}</th>
+            <th>${escapeHtml(t(lang, "colPlayed"))}</th>
+            <th>${escapeHtml(t(lang, "colWon"))}</th>
+            <th>${escapeHtml(t(lang, "colDrawn"))}</th>
+            <th>${escapeHtml(t(lang, "colLost"))}</th>
+            <th>${escapeHtml(t(lang, "colGF"))}</th>
+            <th>${escapeHtml(t(lang, "colGA"))}</th>
+            <th>${escapeHtml(t(lang, "colGD"))}</th>
+            <th>${escapeHtml(t(lang, "colPts"))}</th>
           </tr>
         </thead>
         <tbody>
           ${g.teams
             .map(
-              (t, i) => `
+              (team, i) => `
             <tr class="${i < 2 ? "qualifying" : i === 2 ? "third-place" : ""}">
               <td class="team-cell">
-                ${t.flag ? `<img class="flag-sm" src="${escapeHtml(t.flag)}" alt="" width="20" height="14" />` : ""}
-                ${escapeHtml(t.name)}
+                ${team.flag ? `<img class="flag-sm" src="${escapeHtml(team.flag)}" alt="" width="20" height="14" />` : ""}
+                ${escapeHtml(team.name)}
               </td>
-              <td>${t.played}</td><td>${t.won}</td><td>${t.drawn}</td><td>${t.lost}</td>
-              <td>${t.goalsFor}</td><td>${t.goalsAgainst}</td>
-              <td class="${t.goalDiff > 0 ? "positive" : t.goalDiff < 0 ? "negative" : ""}">${t.goalDiff > 0 ? "+" : ""}${t.goalDiff}</td>
-              <td><strong>${t.points}</strong></td>
+              <td>${team.played}</td><td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td>
+              <td>${team.goalsFor}</td><td>${team.goalsAgainst}</td>
+              <td class="${team.goalDiff > 0 ? "positive" : team.goalDiff < 0 ? "negative" : ""}">${team.goalDiff > 0 ? "+" : ""}${team.goalDiff}</td>
+              <td><strong>${team.points}</strong></td>
             </tr>`
             )
             .join("")}
@@ -143,30 +166,40 @@ function renderGroupTable(g: GroupTable): string {
     </div>`;
 }
 
-function renderGroups(data: DashboardData): string {
-  return `<div class="groups-grid">${data.groups.map(renderGroupTable).join("")}</div>`;
+function renderGroups(data: DashboardData, lang: Lang): string {
+  return `<div class="groups-grid">${data.groups.map((g) => renderGroupTable(g, lang)).join("")}</div>`;
 }
 
-function renderBracket(data: DashboardData): string {
-  return renderVisualBracket(data);
+function renderLangSwitch(lang: Lang): string {
+  return `
+    <div class="lang-switch" role="group" aria-label="${escapeHtml(t(lang, "language"))}">
+      <span class="lang-icon" aria-hidden="true">🌐</span>
+      <button type="button" class="lang-btn ${lang === "pt" ? "active" : ""}" data-lang="pt" title="${escapeHtml(t(lang, "langPt"))}">
+        <img src="${FLAG_BR}" alt="PT-BR" width="22" height="15" loading="lazy" />
+      </button>
+      <button type="button" class="lang-btn ${lang === "en" ? "active" : ""}" data-lang="en" title="${escapeHtml(t(lang, "langEn"))}">
+        <img src="${FLAG_US}" alt="EN" width="22" height="15" loading="lazy" />
+      </button>
+    </div>`;
 }
 
 export interface AppState {
   view: ViewId;
   scheduleFilter: string;
+  lang: Lang;
   data: DashboardData | null;
   loading: boolean;
   error: string | null;
 }
 
 export function renderApp(state: AppState): string {
-  const { view, data, loading, error, scheduleFilter } = state;
+  const { view, data, loading, error, scheduleFilter, lang } = state;
 
   let content = "";
   if (loading && !data) {
-    content = `<div class="loading"><div class="spinner"></div><p>Loading tournament data…</p></div>`;
+    content = `<div class="loading"><div class="spinner"></div><p>${escapeHtml(t(lang, "loading"))}</p></div>`;
   } else if (error && !data) {
-    content = `<div class="error-state"><p>Could not load data</p><p class="muted">${escapeHtml(error)}</p><button class="btn" data-action="refresh">Try again</button></div>`;
+    content = `<div class="error-state"><p>${escapeHtml(t(lang, "errorTitle"))}</p><p class="muted">${escapeHtml(error)}</p><button class="btn" data-action="refresh">${escapeHtml(t(lang, "tryAgain"))}</button></div>`;
   } else if (data) {
     switch (view) {
       case "schedule":
@@ -175,26 +208,31 @@ export function renderApp(state: AppState): string {
             ${["all", "live", "today", "upcoming", "finished"]
               .map(
                 (f) =>
-                  `<button class="filter-btn ${scheduleFilter === f ? "active" : ""}" data-filter="${f}">${f.charAt(0).toUpperCase() + f.slice(1)}</button>`
+                  `<button class="filter-btn ${scheduleFilter === f ? "active" : ""}" data-filter="${f}">${escapeHtml(filterLabel(lang, f))}</button>`
               )
               .join("")}
           </div>
-          ${renderSchedule(data, scheduleFilter)}`;
+          ${renderSchedule(data, scheduleFilter, lang)}`;
         break;
       case "live":
-        content = renderLive(data);
+        content = renderLive(data, lang);
         break;
       case "groups":
-        content = renderGroups(data);
+        content = renderGroups(data, lang);
         break;
       case "bracket":
-        content = renderBracket(data);
+        content = renderVisualBracket(data, lang);
         break;
     }
   }
 
   const liveCount = data?.live.length ?? 0;
-  const updated = data ? timeAgo(data.fetchedAt) : "";
+  const updated = data ? timeAgo(data.fetchedAt, lang) : "";
+
+  const footerHtml =
+    lang === "pt"
+      ? `Painel não oficial · Dados de <a href="https://wcup2026.org" target="_blank" rel="noopener">wcup2026.org</a> e <a href="https://worldcup26.ir" target="_blank" rel="noopener">worldcup26.ir</a> · Sem vínculo com a FIFA`
+      : `Unofficial fan dashboard · Data from <a href="https://wcup2026.org" target="_blank" rel="noopener">wcup2026.org</a> &amp; <a href="https://worldcup26.ir" target="_blank" rel="noopener">worldcup26.ir</a> · Not affiliated with FIFA`;
 
   return `
     <div class="app">
@@ -203,34 +241,35 @@ export function renderApp(state: AppState): string {
           <div class="brand">
             <span class="brand-icon">⚽</span>
             <div>
-              <h1>World Cup 2026</h1>
-              <p class="tagline">USA · Mexico · Canada</p>
+              <h1>${escapeHtml(t(lang, "title"))}</h1>
+              <p class="tagline">${escapeHtml(t(lang, "tagline"))}</p>
             </div>
           </div>
           <div class="header-actions">
-            ${updated ? `<span class="updated" title="Last refresh">Updated ${updated}</span>` : ""}
-            <button class="btn btn-ghost" data-action="refresh" title="Refresh now" ${loading ? "disabled" : ""}>
+            ${renderLangSwitch(lang)}
+            ${updated ? `<span class="updated" title="${escapeHtml(t(lang, "lastRefresh"))}">${escapeHtml(t(lang, "updated", { time: updated }))}</span>` : ""}
+            <button class="btn btn-ghost" data-action="refresh" title="${escapeHtml(t(lang, "refreshNow"))}" ${loading ? "disabled" : ""}>
               ${loading ? "…" : "↻"}
             </button>
           </div>
         </div>
         <nav class="nav">
-          ${navItem("schedule", "Schedule", view)}
-          ${navItem("live", "Live", view, liveCount)}
-          ${navItem("groups", "Groups", view)}
-          ${navItem("bracket", "Bracket", view)}
+          ${navItem("schedule", lang, view)}
+          ${navItem("live", lang, view, liveCount)}
+          ${navItem("groups", lang, view)}
+          ${navItem("bracket", lang, view)}
         </nav>
       </header>
       <main class="main${view === "bracket" ? " main--bracket" : ""}">${content}</main>
       <footer class="footer">
-        <p>Unofficial fan dashboard · Data from <a href="https://wcup2026.org" target="_blank" rel="noopener">wcup2026.org</a> &amp; <a href="https://worldcup26.ir" target="_blank" rel="noopener">worldcup26.ir</a> · Not affiliated with FIFA</p>
+        <p>${footerHtml}</p>
       </footer>
     </div>`;
 }
 
-function navItem(id: ViewId, label: string, current: ViewId, badge?: number): string {
+function navItem(id: ViewId, lang: Lang, current: ViewId, badge?: number): string {
   return `
     <button class="nav-btn ${current === id ? "active" : ""}" data-view="${id}">
-      ${label}${badge ? `<span class="nav-badge">${badge}</span>` : ""}
+      ${escapeHtml(navLabel(lang, id))}${badge ? `<span class="nav-badge">${badge}</span>` : ""}
     </button>`;
 }

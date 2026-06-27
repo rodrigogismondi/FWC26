@@ -1,4 +1,5 @@
 import { fetchDashboard } from "./api";
+import { detectLang, LOCALE, saveLang, type Lang } from "./i18n";
 import { renderApp, type AppState } from "./render";
 import type { ViewId } from "./types";
 import "./style.css";
@@ -9,6 +10,7 @@ const LIVE_REFRESH_MS = 30_000;
 let state: AppState = {
   view: "schedule",
   scheduleFilter: "all",
+  lang: detectLang(),
   data: null,
   loading: true,
   error: null,
@@ -21,6 +23,7 @@ function mount(): void {
   if (!root) return;
 
   const paint = () => {
+    document.documentElement.lang = LOCALE[state.lang];
     root.innerHTML = renderApp(state);
     bindEvents(root);
     if (state.view === "bracket") centerBracketScroll(root);
@@ -67,6 +70,16 @@ function mount(): void {
 
     root.querySelectorAll('[data-action="refresh"]').forEach((el) => {
       el.addEventListener("click", () => load());
+    });
+
+    root.querySelectorAll("[data-lang]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const lang = (el as HTMLElement).dataset.lang as Lang;
+        if (lang === state.lang) return;
+        state = { ...state, lang };
+        saveLang(lang);
+        paint();
+      });
     });
   };
 

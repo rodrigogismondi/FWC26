@@ -1,6 +1,7 @@
 import type { DashboardData } from "./api";
 import type { GroupTable, Match } from "./types";
 import { isPlaceholderTeam } from "./types";
+import { t, translateRound, type Lang } from "./i18n";
 import { escapeHtml, formatScore, teamInitials } from "./utils";
 
 export interface BracketSlot {
@@ -20,13 +21,18 @@ export interface BracketMatch {
   finished: boolean;
 }
 
-const ROUND_LABELS: Record<string, string> = {
-  "Round of 32": "Round of 32",
-  "Round of 16": "Round of 16",
-  "Quarter-final": "Quarter-finals",
-  "Semi-final": "Semi-finals",
-  Final: "Final",
-};
+const ROUND_KEYS = {
+  "Round of 32": "roundR32",
+  "Round of 16": "roundR16",
+  "Quarter-final": "roundQF",
+  "Semi-final": "roundSF",
+  Final: "roundFinal",
+} as const;
+
+function roundLabel(lang: Lang, round: string): string {
+  if (round in ROUND_KEYS) return t(lang, ROUND_KEYS[round as keyof typeof ROUND_KEYS]);
+  return translateRound(lang, round);
+}
 
 /** Bracket tree: left half flows inward; right half is mirrored. */
 const LEFT_R32_PAIRS = [
@@ -217,7 +223,8 @@ function renderColumn(
 
 function renderFinalMatch(
   matchById: Map<number, Match>,
-  groups: GroupTable[]
+  groups: GroupTable[],
+  lang: Lang
 ): string {
   const finalM = matchById.get(FINAL);
   if (!finalM) return "";
@@ -226,7 +233,7 @@ function renderFinalMatch(
   return `
     <div class="bk-final">
       <div class="bk-final-badge">🏆</div>
-      <div class="bk-final-label">Final</div>
+      <div class="bk-final-label">${escapeHtml(t(lang, "final"))}</div>
       <div class="bk-match bk-match-final">
         ${renderSlot(bm.team1, "left")}
         ${renderSlot(bm.team2, "right")}
@@ -235,10 +242,10 @@ function renderFinalMatch(
     </div>`;
 }
 
-function renderGroupStrip(groups: GroupTable[]): string {
+function renderGroupStrip(groups: GroupTable[], lang: Lang): string {
   return `
     <div class="bk-groups-strip">
-      <h3 class="bk-groups-title">Group stage reference</h3>
+      <h3 class="bk-groups-title">${escapeHtml(t(lang, "groupStageRef"))}</h3>
       <div class="bk-groups-row">
         ${groups
           .map(
@@ -268,13 +275,13 @@ function countConfirmedR32(matchById: Map<number, Match>, groups: GroupTable[]):
   return count;
 }
 
-export function renderVisualBracket(data: DashboardData): string {
+export function renderVisualBracket(data: DashboardData, lang: Lang): string {
   const matchById = new Map<number, Match>();
   for (const m of data.all) matchById.set(m.id, m);
 
   const r32 = data.all.filter((m) => m.round === "Round of 32");
   if (r32.length === 0) {
-    return `<div class="empty-state"><p>Knockout bracket data not available yet.</p></div>`;
+    return `<div class="empty-state"><p>${escapeHtml(t(lang, "bracketEmpty"))}</p></div>`;
   }
 
   const confirmed = countConfirmedR32(matchById, data.groups);
@@ -282,43 +289,43 @@ export function renderVisualBracket(data: DashboardData): string {
 
   const leftHalf = `
     <div class="bk-region bk-region-left">
-      ${renderColumn(ROUND_LABELS["Round of 32"], LEFT_R32_PAIRS.flat(), "left", matchById, data.groups, "bk-col-r32", LEFT_R32_PAIRS)}
-      ${renderColumn(ROUND_LABELS["Round of 16"], LEFT_R16, "left", matchById, data.groups, "bk-col-r16")}
-      ${renderColumn(ROUND_LABELS["Quarter-final"], LEFT_QF, "left", matchById, data.groups, "bk-col-qf")}
-      ${renderColumn(ROUND_LABELS["Semi-final"], [LEFT_SF], "left", matchById, data.groups, "bk-col-sf")}
+      ${renderColumn(roundLabel(lang, "Round of 32"), LEFT_R32_PAIRS.flat(), "left", matchById, data.groups, "bk-col-r32", LEFT_R32_PAIRS)}
+      ${renderColumn(roundLabel(lang, "Round of 16"), LEFT_R16, "left", matchById, data.groups, "bk-col-r16")}
+      ${renderColumn(roundLabel(lang, "Quarter-final"), LEFT_QF, "left", matchById, data.groups, "bk-col-qf")}
+      ${renderColumn(roundLabel(lang, "Semi-final"), [LEFT_SF], "left", matchById, data.groups, "bk-col-sf")}
     </div>`;
 
   const rightHalf = `
     <div class="bk-region bk-region-right">
-      ${renderColumn(ROUND_LABELS["Semi-final"], [RIGHT_SF], "right", matchById, data.groups, "bk-col-sf")}
-      ${renderColumn(ROUND_LABELS["Quarter-final"], RIGHT_QF, "right", matchById, data.groups, "bk-col-qf")}
-      ${renderColumn(ROUND_LABELS["Round of 16"], RIGHT_R16, "right", matchById, data.groups, "bk-col-r16")}
-      ${renderColumn(ROUND_LABELS["Round of 32"], RIGHT_R32_PAIRS.flat(), "right", matchById, data.groups, "bk-col-r32", RIGHT_R32_PAIRS)}
+      ${renderColumn(roundLabel(lang, "Semi-final"), [RIGHT_SF], "right", matchById, data.groups, "bk-col-sf")}
+      ${renderColumn(roundLabel(lang, "Quarter-final"), RIGHT_QF, "right", matchById, data.groups, "bk-col-qf")}
+      ${renderColumn(roundLabel(lang, "Round of 16"), RIGHT_R16, "right", matchById, data.groups, "bk-col-r16")}
+      ${renderColumn(roundLabel(lang, "Round of 32"), RIGHT_R32_PAIRS.flat(), "right", matchById, data.groups, "bk-col-r32", RIGHT_R32_PAIRS)}
     </div>`;
 
   const thirdM = matchById.get(THIRD);
   const thirdHtml = thirdM
-    ? `<div class="bk-third">${renderBracketMatch(toBracketMatch(thirdM, matchById, data.groups), "left")}<span class="bk-third-label">3rd place</span></div>`
+    ? `<div class="bk-third">${renderBracketMatch(toBracketMatch(thirdM, matchById, data.groups), "left")}<span class="bk-third-label">${escapeHtml(t(lang, "thirdPlace"))}</span></div>`
     : "";
 
   return `
     <div class="bk-header">
       <div class="bk-status">
-        <span class="bk-status-title">Knockout stage</span>
-        <span class="bk-status-pill">Round of 32 · ${finishedR32}/16 played</span>
-        <span class="bk-status-pill bk-status-pill-alt">${confirmed}/32 teams confirmed</span>
+        <span class="bk-status-title">${escapeHtml(t(lang, "knockoutStage"))}</span>
+        <span class="bk-status-pill">${escapeHtml(t(lang, "r32Progress", { n: finishedR32 }))}</span>
+        <span class="bk-status-pill bk-status-pill-alt">${escapeHtml(t(lang, "teamsConfirmed", { n: confirmed }))}</span>
       </div>
-      <p class="bk-note">Follow the path from the edges to the center. Maroon slots are TBD — they fill in as the group stage completes and winners advance.</p>
+      <p class="bk-note">${escapeHtml(t(lang, "bracketNote"))}</p>
     </div>
     <div class="bk-scroll">
       <div class="bk-tree">
         ${leftHalf}
         <div class="bk-center">
-          ${renderFinalMatch(matchById, data.groups)}
+          ${renderFinalMatch(matchById, data.groups, lang)}
           ${thirdHtml}
         </div>
         ${rightHalf}
       </div>
     </div>
-    ${renderGroupStrip(data.groups)}`;
+    ${renderGroupStrip(data.groups, lang)}`;
 }

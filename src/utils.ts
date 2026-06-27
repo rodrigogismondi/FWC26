@@ -1,4 +1,6 @@
 import type { Match } from "./types";
+import type { Lang } from "./i18n";
+import { LOCALE, t } from "./i18n";
 
 /** Calendar date (YYYY-MM-DD) in the user's local timezone. */
 export function localDateKey(unixSeconds: number): string {
@@ -22,9 +24,9 @@ export function isMatchUpcoming(m: Match): boolean {
   return m.datetime * 1000 > Date.now();
 }
 
-export function formatKickoff(match: Match): string {
+export function formatKickoff(match: Match, lang: Lang): string {
   const d = new Date(match.datetime * 1000);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(LOCALE[lang], {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -33,10 +35,10 @@ export function formatKickoff(match: Match): string {
   });
 }
 
-export function formatDateHeader(localKey: string): string {
+export function formatDateHeader(localKey: string, lang: Lang): string {
   const [y, mo, d] = localKey.split("-").map(Number);
   const date = new Date(y, mo - 1, d);
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(LOCALE[lang], {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -49,16 +51,16 @@ export function formatScore(match: Match): string {
   return `${match.score[0]} – ${match.score[1]}`;
 }
 
-export function statusLabel(status: Match["status"]): string {
+export function statusLabel(status: Match["status"], lang: Lang): string {
   switch (status) {
     case "live":
-      return "LIVE";
+      return t(lang, "statusLive");
     case "finished":
-      return "FT";
+      return t(lang, "statusFinished");
     case "upcoming":
-      return "Upcoming";
+      return t(lang, "statusUpcoming");
     default:
-      return "Scheduled";
+      return t(lang, "statusScheduled");
   }
 }
 
@@ -104,11 +106,11 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function timeAgo(date: Date): string {
+export function timeAgo(date: Date, lang: Lang): string {
   const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 10) return "just now";
-  if (sec < 60) return `${sec}s ago`;
+  if (sec < 10) return t(lang, "timeJustNow");
+  if (sec < 60) return t(lang, "timeSeconds", { n: sec });
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  return `${Math.floor(min / 60)}h ago`;
+  if (min < 60) return t(lang, "timeMinutes", { n: min });
+  return t(lang, "timeHours", { n: Math.floor(min / 60) });
 }
