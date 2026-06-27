@@ -3,7 +3,7 @@ import type { GroupTable, Match } from "./types";
 import { isPlaceholderTeam } from "./types";
 import { translateTeamName } from "./countries";
 import { t, translateRound, type Lang } from "./i18n";
-import { escapeHtml, formatScore, teamInitials } from "./utils";
+import { escapeHtml, formatKickoff, formatScore, teamInitials } from "./utils";
 
 export interface BracketSlot {
   label: string;
@@ -30,19 +30,16 @@ const ROUND_KEYS = {
   Final: "roundFinal",
 } as const;
 
-/** Rows in the shared side grid (2 rows per slot × 2 slots × 4 pairs). */
-const GRID_ROWS = 16;
-
 /**
  * Official FIFA 2026 knockout tree (API match ids).
  * W## references in the API use FIFA match numbers; id = FIFA # − 1.
  */
 const BRACKET_LEFT = {
   r32Pairs: [
-    [72, 74], // → R16 89 (W73 vs W75)
-    [73, 76], // → R16 88 (W74 vs W77)
-    [82, 83], // → R16 92 (W83 vs W84)
-    [80, 81], // → R16 93 (W81 vs W82)
+    [72, 74],
+    [73, 76],
+    [82, 83],
+    [80, 81],
   ],
   r16: [89, 88, 92, 93],
   qf: [96, 97],
@@ -51,10 +48,10 @@ const BRACKET_LEFT = {
 
 const BRACKET_RIGHT = {
   r32Pairs: [
-    [75, 77], // → R16 90 (W76 vs W78) — Brazil/Japan & Ivory Coast/Norway
-    [78, 79], // → R16 91 (W79 vs W80)
-    [85, 87], // → R16 94 (W86 vs W88)
-    [84, 86], // → R16 95 (W85 vs W87)
+    [75, 77],
+    [78, 79],
+    [85, 87],
+    [84, 86],
   ],
   r16: [90, 91, 94, 95],
   qf: [98, 99],
@@ -171,137 +168,135 @@ function toBracketMatch(m: Match, matchById: Map<number, Match>, groups: GroupTa
   };
 }
 
-function renderSlot(slot: BracketSlot, side: "left" | "right", lang: Lang): string {
+function renderTeamRow(slot: BracketSlot, lang: Lang): string {
   if (slot.isPlaceholder) {
-    return `<div class="bk-slot bk-slot-empty bk-slot-tbd ${side === "right" ? "bk-slot-right" : ""}"></div>`;
+    return `
+      <div class="bk-team-row bk-team-tbd">
+        <span class="bk-icon-tbd" aria-hidden="true"></span>
+        <span class="bk-team-name"></span>
+      </div>`;
   }
 
   const label = translateTeamName(slot.label, lang);
   const flag = slot.flag
-    ? `<img class="bk-flag" src="${escapeHtml(slot.flag)}" alt="" width="22" height="15" loading="lazy" />`
+    ? `<img class="bk-flag" src="${escapeHtml(slot.flag)}" alt="" width="20" height="14" loading="lazy" />`
     : `<span class="bk-flag-ph">${escapeHtml(teamInitials(label))}</span>`;
 
-  const classes = [
-    "bk-slot",
-    side === "right" ? "bk-slot-right" : "",
-    slot.isWinner ? "bk-slot-winner" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
+  const winner = slot.isWinner ? " bk-team-winner" : "";
   const score =
-    slot.score !== undefined ? `<span class="bk-score">${slot.score}</span>` : "";
+    slot.score !== undefined ? `<span class="bk-team-score">${slot.score}</span>` : "";
 
   return `
-    <div class="${classes}" title="${escapeHtml(label)}">
-      ${side === "left" ? `${flag}<span class="bk-label">${escapeHtml(label)}</span>${score}` : `${score}<span class="bk-label">${escapeHtml(label)}</span>${flag}`}
+    <div class="bk-team-row${winner}" title="${escapeHtml(label)}">
+      ${flag}
+      <span class="bk-team-name">${escapeHtml(label)}</span>
+      ${score}
     </div>`;
 }
 
-function renderBracketMatch(bm: BracketMatch, side: "left" | "right", lang: Lang): string {
-  const live = bm.status === "live" ? " bk-match-live" : "";
-  const done = bm.finished ? " bk-match-done" : "";
+function renderMatchCard(m: Match, bm: BracketMatch, lang: Lang): string {
+  const live = bm.status === "live" ? " bk-card-live" : "";
+  const done = bm.finished ? " bk-card-done" : "";
+  const time = formatKickoff(m, lang);
+
   return `
-    <div class="bk-match${live}${done}" data-match-id="${bm.id}">
-      ${renderSlot(bm.team1, side, lang)}
-      ${renderSlot(bm.team2, side, lang)}
+    <div class="bk-card${live}${done}" data-match-id="${bm.id}">
+      <div class="bk-card-time">${escapeHtml(time)}</div>
+      <div class="bk-card-body">
+        ${renderTeamRow(bm.team1, lang)}
+        ${renderTeamRow(bm.team2, lang)}
+      </div>
     </div>`;
 }
 
 function renderMatchById(
   id: number,
-  side: "left" | "right",
   matchById: Map<number, Match>,
   groups: GroupTable[],
   lang: Lang
 ): string {
   const m = matchById.get(id);
   if (!m) return "";
-  return renderBracketMatch(toBracketMatch(m, matchById, groups), side, lang);
+  return renderMatchCard(m, toBracketMatch(m, matchById, groups), lang);
 }
 
-/** R32 pair p occupies rows p×4+1 … p×4+4; R16 p at rows p×4+2 … p×4+3. */
-function r32PairRows(p: number): string {
-  const start = p * 4 + 1;
-  return `${start} / ${start + 4}`;
+function bracketSlot(span: number, className: string, inner: string): string {
+  return `<div class="${className}" style="height:calc(var(--bk-pair-unit) * ${span})">${inner}</div>`;
 }
 
-function r16Rows(p: number): string {
-  const start = p * 4 + 2;
-  return `${start} / ${start + 2}`;
+function renderR32Column(
+  pairs: readonly (readonly number[])[],
+  matchById: Map<number, Match>,
+  groups: GroupTable[],
+  lang: Lang
+): string {
+  const body = pairs
+    .map(
+      (pair) =>
+        bracketSlot(
+          1,
+          `bk-pair bk-pair-r32 bk-connector-out`,
+          pair.map((id) => renderMatchById(id, matchById, groups, lang)).join("")
+        )
+    )
+    .join("");
+
+  return `
+    <div class="bk-col bk-col-r32">
+      <div class="bk-col-label">${escapeHtml(roundLabel(lang, "Round of 32"))}</div>
+      <div class="bk-col-stack">${body}</div>
+    </div>`;
 }
 
-/** QF q spans the vertical center of two adjacent R16 blocks (8 rows each). */
-function qfRows(q: number): string {
-  const start = q * 8 + 3;
-  return `${start} / ${start + 4}`;
+function renderMatchColumn(
+  round: string,
+  ids: readonly number[],
+  span: number,
+  connectorClass: string,
+  matchById: Map<number, Match>,
+  groups: GroupTable[],
+  lang: Lang
+): string {
+  const body = ids
+    .map((id) =>
+      bracketSlot(
+        span,
+        `bk-bracket-slot ${connectorClass} bk-connector-out`,
+        renderMatchById(id, matchById, groups, lang)
+      )
+    )
+    .join("");
+
+  return `
+    <div class="bk-col">
+      <div class="bk-col-label">${escapeHtml(roundLabel(lang, round))}</div>
+      <div class="bk-col-stack">${body}</div>
+    </div>`;
 }
 
-function sfRows(): string {
-  return "7 / 11";
-}
-
-function renderSideGrid(
+function renderSide(
   config: typeof BRACKET_LEFT | typeof BRACKET_RIGHT,
   side: "left" | "right",
   matchById: Map<number, Match>,
   groups: GroupTable[],
   lang: Lang
 ): string {
-  const colOrder =
+  const cols =
     side === "left"
-      ? (["r32", "r16", "qf", "sf"] as const)
-      : (["sf", "qf", "r16", "r32"] as const);
+      ? [
+          renderR32Column(config.r32Pairs, matchById, groups, lang),
+          renderMatchColumn("Round of 16", config.r16, 1, "bk-slot-r16", matchById, groups, lang),
+          renderMatchColumn("Quarter-final", config.qf, 2, "bk-slot-qf", matchById, groups, lang),
+          renderMatchColumn("Semi-final", [config.sf], 4, "bk-slot-sf", matchById, groups, lang),
+        ]
+      : [
+          renderMatchColumn("Semi-final", [config.sf], 4, "bk-slot-sf", matchById, groups, lang),
+          renderMatchColumn("Quarter-final", config.qf, 2, "bk-slot-qf", matchById, groups, lang),
+          renderMatchColumn("Round of 16", config.r16, 1, "bk-slot-r16", matchById, groups, lang),
+          renderR32Column(config.r32Pairs, matchById, groups, lang),
+        ];
 
-  const labels: Record<(typeof colOrder)[number], string> = {
-    r32: roundLabel(lang, "Round of 32"),
-    r16: roundLabel(lang, "Round of 16"),
-    qf: roundLabel(lang, "Quarter-final"),
-    sf: roundLabel(lang, "Semi-final"),
-  };
-
-  const headerCells = colOrder
-    .map(
-      (col, i) =>
-        `<div class="bk-col-label" style="grid-column:${i + 1};grid-row:1">${escapeHtml(labels[col])}</div>`
-    )
-    .join("");
-
-  const r32Cells = config.r32Pairs
-    .map(
-      (pair, p) =>
-        `<div class="bk-pair bk-pair-r32" style="grid-column:${colOrder.indexOf("r32") + 1};grid-row:${r32PairRows(p)}">${pair
-          .map((id) => renderMatchById(id, side, matchById, groups, lang))
-          .join("")}</div>`
-    )
-    .join("");
-
-  const r16Cells = config.r16
-    .map(
-      (id, p) =>
-        `<div class="bk-match-wrap bk-match-r16" style="grid-column:${colOrder.indexOf("r16") + 1};grid-row:${r16Rows(p)}">${renderMatchById(id, side, matchById, groups, lang)}</div>`
-    )
-    .join("");
-
-  const qfCells = config.qf
-    .map(
-      (id, q) =>
-        `<div class="bk-match-wrap bk-match-qf" style="grid-column:${colOrder.indexOf("qf") + 1};grid-row:${qfRows(q)}">${renderMatchById(id, side, matchById, groups, lang)}</div>`
-    )
-    .join("");
-
-  const sfCell = `<div class="bk-match-wrap bk-match-sf" style="grid-column:${colOrder.indexOf("sf") + 1};grid-row:${sfRows()}">${renderMatchById(config.sf, side, matchById, groups, lang)}</div>`;
-
-  return `
-    <div class="bk-region bk-region-${side}">
-      <div class="bk-side-grid bk-side-${side}" style="grid-template-rows: auto repeat(${GRID_ROWS}, var(--bk-row))">
-        ${headerCells}
-        ${r32Cells}
-        ${r16Cells}
-        ${qfCells}
-        ${sfCell}
-      </div>
-    </div>`;
+  return `<div class="bk-side bk-side-${side}">${cols.join("")}</div>`;
 }
 
 function renderFinalMatch(
@@ -317,10 +312,7 @@ function renderFinalMatch(
     <div class="bk-final">
       <div class="bk-final-badge">🏆</div>
       <div class="bk-final-label">${escapeHtml(t(lang, "final"))}</div>
-      <div class="bk-match bk-match-final">
-        ${renderSlot(bm.team1, "left", lang)}
-        ${renderSlot(bm.team2, "right", lang)}
-      </div>
+      ${renderMatchCard(finalM, bm, lang)}
       ${bm.finished ? `<div class="bk-final-score">${escapeHtml(formatScore(finalM))}</div>` : ""}
     </div>`;
 }
@@ -372,7 +364,7 @@ export function renderVisualBracket(data: DashboardData, lang: Lang): string {
 
   const thirdM = matchById.get(THIRD);
   const thirdHtml = thirdM
-    ? `<div class="bk-third">${renderBracketMatch(toBracketMatch(thirdM, matchById, data.groups), "left", lang)}<span class="bk-third-label">${escapeHtml(t(lang, "thirdPlace"))}</span></div>`
+    ? `<div class="bk-third">${renderMatchCard(thirdM, toBracketMatch(thirdM, matchById, data.groups), lang)}<span class="bk-third-label">${escapeHtml(t(lang, "thirdPlace"))}</span></div>`
     : "";
 
   return `
@@ -386,12 +378,12 @@ export function renderVisualBracket(data: DashboardData, lang: Lang): string {
     </div>
     <div class="bk-scroll">
       <div class="bk-tree">
-        ${renderSideGrid(BRACKET_LEFT, "left", matchById, data.groups, lang)}
+        ${renderSide(BRACKET_LEFT, "left", matchById, data.groups, lang)}
         <div class="bk-center">
           ${renderFinalMatch(matchById, data.groups, lang)}
           ${thirdHtml}
         </div>
-        ${renderSideGrid(BRACKET_RIGHT, "right", matchById, data.groups, lang)}
+        ${renderSide(BRACKET_RIGHT, "right", matchById, data.groups, lang)}
       </div>
     </div>
     ${renderGroupStrip(data.groups, lang)}`;
