@@ -521,12 +521,15 @@ a:hover {
 /* Bracket — visual knockout tree */
 .main--bracket {
   max-width: none;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+  overflow-x: hidden;
 }
 
 .bk-header {
   margin-bottom: 1.25rem;
+  padding-inline: 1.25rem;
 }
 
 .bk-status {
@@ -566,9 +569,10 @@ a:hover {
 
 .bk-scroll {
   overflow-x: auto;
-  margin: 0 -0.75rem;
-  padding: 0 0.75rem 1rem;
+  overflow-y: visible;
+  padding: 0 1.25rem 1.5rem;
   -webkit-overflow-scrolling: touch;
+  scroll-padding-inline: 1.25rem;
 }
 
 .bk-tree {
@@ -576,14 +580,17 @@ a:hover {
   align-items: stretch;
   justify-content: center;
   gap: 0;
-  min-width: 900px;
+  width: max-content;
+  min-width: 100%;
+  margin-inline: auto;
   padding: 1rem 0 2rem;
+  box-sizing: border-box;
 }
 
 .bk-region {
   display: flex;
   align-items: stretch;
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .bk-region-left {
@@ -834,7 +841,7 @@ a:hover {
 
 .bk-groups-strip {
   margin-top: 2rem;
-  padding-top: 1.5rem;
+  padding: 1.5rem 1.25rem 0;
   border-top: 1px solid var(--border);
 }
 
@@ -881,17 +888,28 @@ a:hover {
 }
 
 @media (max-width: 960px) {
-  .bk-tree {
-    min-width: 780px;
-  }
-
   .bk-col {
-    min-width: 110px;
+    min-width: 100px;
   }
 
   .bk-slot {
-    max-width: 120px;
-    font-size: 0.65rem;
+    max-width: 108px;
+    font-size: 0.62rem;
+    min-height: 26px;
+  }
+
+  .bk-col-r16 .bk-col-matches {
+    gap: 1.75rem;
+    padding: 0.75rem 0;
+  }
+
+  .bk-col-qf .bk-col-matches {
+    gap: 4rem;
+    padding: 2rem 0;
+  }
+
+  .bk-col-sf .bk-col-matches {
+    padding: 4.5rem 0;
   }
 }
 

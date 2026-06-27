@@ -23,6 +23,7 @@ function mount(): void {
   const paint = () => {
     root.innerHTML = renderApp(state);
     bindEvents(root);
+    if (state.view === "bracket") centerBracketScroll(root);
   };
 
   const load = async (silent = false) => {
@@ -77,3 +78,12 @@ function mount(): void {
 }
 
 mount();
+
+function centerBracketScroll(root: HTMLElement): void {
+  requestAnimationFrame(() => {
+    const el = root.querySelector<HTMLElement>(".bk-scroll");
+    if (!el) return;
+    const overflow = el.scrollWidth - el.clientWidth;
+    if (overflow > 0) el.scrollLeft = overflow / 2;
+  });
+}
