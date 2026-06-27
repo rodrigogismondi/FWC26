@@ -1,4 +1,5 @@
 import type { DashboardData } from "./api";
+import trophyUrl from "./assets/trophy.png";
 import type { GroupTable, Match } from "./types";
 import { translateTeamName } from "./countries";
 import { t, translateRound, type Lang } from "./i18n";
@@ -242,7 +243,9 @@ function renderFinalMatch(
   const bm = toBracketMatch(finalM, matchById, groups);
   return `
     <div class="bk-final">
-      <div class="bk-final-badge">🏆</div>
+      <div class="bk-final-badge">
+        <img class="bk-trophy" src="${escapeHtml(trophyUrl)}" alt="" width="56" height="56" loading="lazy" />
+      </div>
       <div class="bk-final-label">${escapeHtml(t(lang, "final"))}</div>
       ${renderMatchCard(finalM, bm, lang)}
       ${bm.finished ? `<div class="bk-final-score">${escapeHtml(formatScore(finalM))}</div>` : ""}
