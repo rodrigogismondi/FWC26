@@ -1,5 +1,5 @@
 import type { DashboardData } from "./api";
-import trophyUrl from "./assets/trophy.png";
+import trophyUrl from "./assets/trophy-removebg-preview.png";
 import type { GroupTable, Match } from "./types";
 import { translateTeamName } from "./countries";
 import { t, translateRound, type Lang } from "./i18n";
