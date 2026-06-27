@@ -253,7 +253,7 @@ export function renderApp(state: AppState): string {
       case "schedule":
         content = `
           <div class="filter-bar">
-            ${["all", "live", "today", "upcoming", "finished"]
+            ${["today", "live", "upcoming", "finished", "all"]
               .map(
                 (f) =>
                   `<button class="filter-btn ${scheduleFilter === f ? "active" : ""}" data-filter="${f}">${escapeHtml(filterLabel(lang, f))}</button>`

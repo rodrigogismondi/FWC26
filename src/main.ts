@@ -10,7 +10,7 @@ const LIVE_REFRESH_MS = 30_000;
 
 let state: AppState = {
   view: "schedule",
-  scheduleFilter: "all",
+  scheduleFilter: "today",
   lang: detectLang(),
   data: null,
   loading: true,
