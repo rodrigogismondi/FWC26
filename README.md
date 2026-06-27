@@ -10,6 +10,7 @@ A free, unofficial fan dashboard for the FIFA World Cup 2026 — schedule, live 
 - **Live** — in-progress matches with auto-refresh (30s when live, 60s otherwise)
 - **Groups** — standings for all 12 groups (A–L)
 - **Bracket** — Round of 32 through Final
+- **Installable (PWA)** — add to Home Screen on iPhone/iPad for a full-screen app experience
 
 Odds are intentionally excluded — every free odds API requires a sign-up key with usage limits.
 
@@ -30,6 +31,21 @@ npm run dev
 ```
 
 Open http://localhost:5173
+
+## Install on iPhone / iPad (PWA)
+
+The site is a Progressive Web App. The GitHub Pages URL keeps working in the browser; installing adds a home-screen icon that opens full-screen like an app.
+
+1. Open **https://rodrigogismondi.github.io/FWC26/** in Safari (not Chrome on iOS).
+2. Tap the **Share** button (square with arrow).
+3. Tap **Add to Home Screen**.
+4. Confirm the name (WC 2026) and tap **Add**.
+
+The installed app uses the same live URL and data — nothing is duplicated or removed from the web version.
+
+To refresh cached assets after an update, remove the home-screen icon and add it again, or pull to refresh inside the app.
+
+Regenerate launcher icons after branding changes: `npm run icons`
 
 ## Live site
 
