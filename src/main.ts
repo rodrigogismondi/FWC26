@@ -81,9 +81,13 @@ function mount(): void {
   };
 
   const load = async (silent = false) => {
-    if (!silent) state = { ...state, loading: true, error: null };
-    else state = { ...state, loading: true };
-    paint();
+    if (!silent) {
+      state = { ...state, loading: true, error: null };
+      paint();
+    } else if (!state.data) {
+      state = { ...state, loading: true };
+      paint();
+    }
 
     try {
       const data = await fetchDashboard();
@@ -93,11 +97,15 @@ function mount(): void {
         await loadMatchDetail(state.selectedMatchId, true);
       }
     } catch (err) {
-      state = {
-        ...state,
-        loading: false,
-        error: err instanceof Error ? err.message : "Unknown error",
-      };
+      if (!silent || !state.data) {
+        state = {
+          ...state,
+          loading: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+        };
+      } else {
+        state = { ...state, loading: false };
+      }
     }
     paint();
   };

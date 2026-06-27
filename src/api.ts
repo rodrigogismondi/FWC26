@@ -4,6 +4,26 @@ import { isMatchToday, isMatchUpcoming } from "./utils";
 
 const WCUP_BASE = "https://wcup2026.org/api/data.php";
 const WC26_BASE = "https://worldcup26.ir/get";
+const FETCH_TIMEOUT_MS = 12_000;
+
+async function fetchWithTimeout(
+  input: string,
+  init?: RequestInit,
+  timeoutMs = FETCH_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 interface WcupMatch {
   id: number;
@@ -99,7 +119,7 @@ function mapMatch(m: WcupMatch): Match {
 
 async function fetchWcup(action: string, params: Record<string, string> = {}): Promise<WcupMatch[]> {
   const qs = new URLSearchParams({ action, ...params });
-  const res = await fetch(`${WCUP_BASE}?${qs}`);
+  const res = await fetchWithTimeout(`${WCUP_BASE}?${qs}`);
   if (!res.ok) throw new Error(`wcup2026 ${action}: HTTP ${res.status}`);
   const data = (await res.json()) as WcupResponse;
   if (!data.ok) throw new Error(`wcup2026 ${action}: response not ok`);
@@ -156,7 +176,7 @@ function mapMatchDetail(raw: WcupMatchDetail): MatchDetail {
 }
 
 export async function fetchMatchDetail(id: number): Promise<MatchDetail | null> {
-  const res = await fetch(`${WCUP_BASE}?action=match&id=${id}`);
+  const res = await fetchWithTimeout(`${WCUP_BASE}?action=match&id=${id}`);
   if (!res.ok) throw new Error(`wcup2026 match: HTTP ${res.status}`);
   const data = (await res.json()) as WcupMatchDetailResponse;
   if (!data.ok || !data.match) return null;
@@ -175,7 +195,7 @@ export function matchSummaryFromList(m: Match): MatchDetail {
 }
 
 export async function fetchTeams(): Promise<Team[]> {
-  const res = await fetch(`${WC26_BASE}/teams`);
+  const res = await fetchWithTimeout(`${WC26_BASE}/teams`);
   if (!res.ok) throw new Error(`worldcup26 teams: HTTP ${res.status}`);
   const data = (await res.json()) as { teams: Wc26Team[] };
   return data.teams.map((t) => ({
@@ -189,7 +209,7 @@ export async function fetchTeams(): Promise<Team[]> {
 
 export async function fetchGroupStandings(): Promise<GroupTable[]> {
   const [groupsRes, teams] = await Promise.all([
-    fetch(`${WC26_BASE}/groups`),
+    fetchWithTimeout(`${WC26_BASE}/groups`),
     fetchTeams(),
   ]);
 
@@ -233,13 +253,23 @@ export interface DashboardData {
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
-  const [all, live, recent, groups] = await Promise.all([
+  const [allResult, groupsResult] = await Promise.allSettled([
     fetchAllMatches(),
-    fetchLiveMatches(),
-    fetchRecentResults(8),
     fetchGroupStandings(),
   ]);
 
+  if (allResult.status === "rejected") {
+    const reason = allResult.reason;
+    throw reason instanceof Error ? reason : new Error("Could not load matches");
+  }
+
+  const all = allResult.value;
+  const live = all.filter((m) => m.status === "live");
+  const recent = all
+    .filter((m) => m.status === "finished")
+    .sort((a, b) => b.datetime - a.datetime)
+    .slice(0, 8);
+  const groups = groupsResult.status === "fulfilled" ? groupsResult.value : [];
   const today = all.filter(isMatchToday);
   const upcoming = all.filter(isMatchUpcoming).slice(0, 15);
 
