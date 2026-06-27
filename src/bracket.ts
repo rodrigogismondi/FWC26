@@ -3,7 +3,7 @@ import type { GroupTable, Match } from "./types";
 import { isPlaceholderTeam } from "./types";
 import { translateTeamName } from "./countries";
 import { t, translateRound, type Lang } from "./i18n";
-import { escapeHtml, formatScore } from "./utils";
+import { escapeHtml, formatScore, teamInitials } from "./utils";
 
 export interface BracketSlot {
   label: string;
@@ -131,8 +131,11 @@ function resolveTeamLabel(
     return { label: groupResolved.name, flag: groupResolved.flag, isPlaceholder: false };
   }
 
-  const isPlaceholder = isPlaceholderTeam(raw) || !flag;
-  return { label: "", flag: "", isPlaceholder };
+  if (isPlaceholderTeam(raw)) {
+    return { label: "", flag: "", isPlaceholder: true };
+  }
+
+  return { label: raw, flag: flag || "", isPlaceholder: false };
 }
 
 function toBracketMatch(m: Match, matchById: Map<number, Match>, groups: GroupTable[]): BracketMatch {
@@ -163,7 +166,7 @@ function renderSlot(slot: BracketSlot, side: "left" | "right", lang: Lang): stri
   const label = translateTeamName(slot.label, lang);
   const flag = slot.flag
     ? `<img class="bk-flag" src="${escapeHtml(slot.flag)}" alt="" width="22" height="15" loading="lazy" />`
-    : "";
+    : `<span class="bk-flag-ph">${escapeHtml(teamInitials(label))}</span>`;
 
   const classes = [
     "bk-slot",

@@ -60,5 +60,9 @@ export function isKnockoutRound(round: string): boolean {
 }
 
 export function isPlaceholderTeam(name: string): boolean {
-  return /^[\d]?[A-L]$/.test(name) || name.includes("/") || name.includes("rd ");
+  if (/^W\d+$|^L\d+$/.test(name)) return true;
+  if (/^[\d]?[A-L]$/.test(name)) return true;
+  if (name.includes("/")) return true;
+  if (name.includes("rd ")) return true;
+  return false;
 }
