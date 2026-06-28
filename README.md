@@ -45,7 +45,7 @@ The installed app uses the same live URL and data — nothing is duplicated or r
 
 To refresh cached assets after an update, remove the home-screen icon and add it again, or pull to refresh inside the app.
 
-Regenerate launcher icons after branding changes: `npm run icons`
+Regenerate launcher icons after changing `src/assets/icon.png`: `npm run icons`
 
 ## Live site
 
