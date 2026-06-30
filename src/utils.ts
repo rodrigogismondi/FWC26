@@ -57,9 +57,10 @@ function capitalizeLocale(text: string, lang: Lang): string {
 
 export function formatScore(match: Match, lang?: Lang): string {
   if (!match.score) return "–";
-  const base = `${match.score[0]} – ${match.score[1]}`;
-  if (!lang || !decidedByPenalties(match) || !match.penScore) return base;
-  return `${base} (${match.penScore[0]}–${match.penScore[1]} ${t(lang, "penShort")})`;
+  if (lang && decidedByPenalties(match) && match.penScore) {
+    return `${match.score[0]}(${match.penScore[0]}) – ${match.score[1]}(${match.penScore[1]})`;
+  }
+  return `${match.score[0]} – ${match.score[1]}`;
 }
 
 export function statusLabel(status: Match["status"], lang: Lang): string {

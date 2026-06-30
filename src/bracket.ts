@@ -4,7 +4,7 @@ import type { GroupTable, Match } from "./types";
 import { translateTeamName } from "./countries";
 import { t, translateRound, type Lang } from "./i18n";
 import { buildMatchById, resolveTeamSlot } from "./team-resolve";
-import { decidedByPenalties, getMatchWinnerTeam } from "./match-outcome";
+import { getMatchWinnerTeam } from "./match-outcome";
 import { escapeHtml, formatKickoff, formatScore, teamInitials } from "./utils";
 
 export interface BracketSlot {
@@ -13,6 +13,7 @@ export interface BracketSlot {
   isPlaceholder: boolean;
   isWinner?: boolean;
   score?: number;
+  penScore?: number;
 }
 
 export interface BracketMatch {
@@ -84,11 +85,13 @@ function toBracketMatch(m: Match, matchById: Map<number, Match>, groups: GroupTa
       ...slot1,
       isWinner: winnerTeam === 1,
       score: m.score?.[0],
+      penScore: m.penScore?.[0],
     },
     team2: {
       ...slot2,
       isWinner: winnerTeam === 2,
       score: m.score?.[1],
+      penScore: m.penScore?.[1],
     },
     status: m.status,
     finished: m.status === "finished",
@@ -111,7 +114,9 @@ function renderTeamRow(slot: BracketSlot, lang: Lang): string {
 
   const winner = slot.isWinner ? " bk-team-winner" : "";
   const score =
-    slot.score !== undefined ? `<span class="bk-team-score">${slot.score}</span>` : "";
+    slot.score !== undefined
+      ? `<span class="bk-team-score">${slot.score}${slot.penScore !== undefined ? `(${slot.penScore})` : ""}</span>`
+      : "";
 
   return `
     <div class="bk-team-row${winner}" title="${escapeHtml(label)}">
@@ -126,11 +131,6 @@ function renderMatchCard(m: Match, bm: BracketMatch, lang: Lang): string {
   const done = bm.finished ? " bk-card-done" : "";
   const time = formatKickoff(m, lang);
 
-  const penLine =
-    bm.finished && decidedByPenalties(m) && m.penScore
-      ? `<div class="bk-card-pens">${escapeHtml(t(lang, "penResultShort", { score1: m.penScore[0], score2: m.penScore[1] }))}</div>`
-      : "";
-
   return `
     <div class="bk-card${live}${done}" data-match-id="${bm.id}">
       <div class="bk-card-time">${escapeHtml(time)}</div>
@@ -138,7 +138,6 @@ function renderMatchCard(m: Match, bm: BracketMatch, lang: Lang): string {
         ${renderTeamRow(bm.team1, lang)}
         ${renderTeamRow(bm.team2, lang)}
       </div>
-      ${penLine}
     </div>`;
 }
 
