@@ -1,7 +1,7 @@
 import { decidedByPenalties } from "./match-outcome";
 import type { Match } from "./types";
 import type { Lang } from "./i18n";
-import { LOCALE } from "./i18n";
+import { LOCALE, t } from "./i18n";
 
 /** Calendar date (YYYY-MM-DD) in the user's local timezone. */
 export function localDateKey(unixSeconds: number): string {
