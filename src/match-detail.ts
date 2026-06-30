@@ -1,6 +1,7 @@
 import type { DashboardData } from "./api";
 import { translateTeamName } from "./countries";
 import { t, translateGroup, translateRound, type Lang } from "./i18n";
+import { getMatchWinnerTeam } from "./match-outcome";
 import type { MatchDetail, MatchDetailTab, TimelineEvent } from "./match-detail-types";
 import type { GroupTable } from "./types";
 import { buildMatchById, resolveTeamSlot } from "./team-resolve";
@@ -195,6 +196,8 @@ export function renderMatchDetailPanel(
   else if (tab === "stats") tabBody = renderStatsTab(detail, lang);
   else if (tab === "group" && groupTable) tabBody = renderGroupMiniTable(groupTable, lang);
 
+  const winnerTeam = getMatchWinnerTeam(detail);
+
   const ht =
     detail.halfTime
       ? `<span class="md-ht">${escapeHtml(t(lang, "mdHalfTime"))}: ${detail.halfTime[0]}–${detail.halfTime[1]}</span>`
@@ -202,7 +205,7 @@ export function renderMatchDetailPanel(
 
   const score =
     detail.status === "finished" && detail.score
-      ? `<span class="md-score">${escapeHtml(formatScore(detail))}</span>`
+      ? `<span class="md-score">${escapeHtml(formatScore(detail, lang))}</span>`
       : detail.score
         ? `<span class="md-score">${detail.score[0]} – ${detail.score[1]}</span>`
         : `<span class="md-score md-score-upcoming">${escapeHtml(formatKickoff(detail, lang))}</span>`;
@@ -223,7 +226,7 @@ export function renderMatchDetailPanel(
             ${detail.group ? `<span> · ${escapeHtml(translateGroup(lang, detail.group))}</span>` : ""}
           </div>
           <div class="md-teams">
-            <div class="md-team">
+            <div class="md-team ${winnerTeam === 1 ? "md-team-winner" : ""}">
               ${flagImg(flag1, name1, 32)}
               <span class="md-team-name">${escapeHtml(name1)}</span>
             </div>
@@ -232,7 +235,7 @@ export function renderMatchDetailPanel(
               ${ht}
               ${statusBadge}
             </div>
-            <div class="md-team md-team-right">
+            <div class="md-team md-team-right ${winnerTeam === 2 ? "md-team-winner" : ""}">
               ${flagImg(flag2, name2, 32)}
               <span class="md-team-name">${escapeHtml(name2)}</span>
             </div>

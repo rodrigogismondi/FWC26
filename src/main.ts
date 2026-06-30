@@ -42,9 +42,13 @@ function mount(): void {
     try {
       const detail = await fetchMatchDetail(id);
       const fallback = state.data?.all.find((m) => m.id === id);
+      const merged =
+        detail && fallback?.penScore
+          ? { ...detail, penScore: fallback.penScore }
+          : detail ?? (fallback ? matchSummaryFromList(fallback) : null);
       state = {
         ...state,
-        matchDetail: detail ?? (fallback ? matchSummaryFromList(fallback) : null),
+        matchDetail: merged,
         matchDetailLoading: false,
       };
     } catch {

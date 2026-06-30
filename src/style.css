@@ -855,6 +855,16 @@ a:hover {
   font-weight: 600;
 }
 
+.bk-card-pens {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--gold);
+  text-align: center;
+}
+
 .bk-final {
   text-align: center;
 }
@@ -1170,6 +1180,10 @@ a:hover {
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.25;
+}
+
+.md-team-winner .md-team-name {
+  color: var(--accent);
 }
 
 .md-center {

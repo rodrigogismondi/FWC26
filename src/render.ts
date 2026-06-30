@@ -14,6 +14,7 @@ import {
   translateRound,
   type Lang,
 } from "./i18n";
+import { getMatchWinnerTeam } from "./match-outcome";
 import type { GroupTable, Match, ViewId } from "./types";
 import {
   escapeHtml,
@@ -65,16 +66,18 @@ function renderMatchRow(m: Match, lang: Lang, compact = false, matchById?: Map<n
         <span class="match-venue">${escapeHtml(m.venue)}</span>
       </div>`;
 
+  const winnerTeam = m.status === "finished" ? getMatchWinnerTeam(m) : null;
+
   return `
     <article class="match-card match-card-clickable ${m.status === "live" ? "match-card-live" : ""}" data-id="${m.id}" data-action="open-match" data-match-id="${m.id}" role="button" tabindex="0">
       ${meta}
       <div class="match-teams">
-        <div class="team-row ${m.score && m.score[0] > m.score[1] ? "team-winner" : ""}">
+        <div class="team-row ${winnerTeam === 1 ? "team-winner" : ""}">
           ${flagImg(flag1, name1)}
           <span class="team-name">${escapeHtml(name1)}</span>
           ${m.score ? `<span class="team-score">${m.score[0]}</span>` : ""}
         </div>
-        <div class="team-row ${m.score && m.score[1] > m.score[0] ? "team-winner" : ""}">
+        <div class="team-row ${winnerTeam === 2 ? "team-winner" : ""}">
           ${flagImg(flag2, name2)}
           <span class="team-name">${escapeHtml(name2)}</span>
           ${m.score ? `<span class="team-score">${m.score[1]}</span>` : ""}
@@ -82,7 +85,7 @@ function renderMatchRow(m: Match, lang: Lang, compact = false, matchById?: Map<n
       </div>
       <div class="match-footer">
         ${liveBadge}
-        <time class="match-time">${escapeHtml(m.status === "finished" ? formatScore(m) : formatKickoff(m, lang))}</time>
+        <time class="match-time">${escapeHtml(m.status === "finished" ? formatScore(m, lang) : formatKickoff(m, lang))}</time>
       </div>
     </article>`;
 }

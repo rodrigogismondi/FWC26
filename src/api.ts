@@ -1,5 +1,6 @@
-import type { GroupTable, Match, MatchStatus, Team } from "./types";
 import type { MatchCard, MatchDetail, MatchGoal, MatchStatRow } from "./match-detail-types";
+import { enrichMatchesWithPenalties, pickPenScoreFromWcup } from "./penalty-data";
+import type { GroupTable, Match, MatchStatus, Team } from "./types";
 import { isMatchToday, isMatchUpcoming } from "./utils";
 
 const WCUP_BASE = "https://wcup2026.org/api/data.php";
@@ -35,6 +36,8 @@ interface WcupMatch {
   flag2: string;
   status: string;
   score: [number, number] | null;
+  pen_score?: [number, number];
+  score_pen?: [number, number];
   live_minute: number | null;
   date: string;
   time: string;
@@ -46,6 +49,8 @@ interface WcupMatchDetail extends WcupMatch {
   ht?: [number, number];
   goals1?: MatchGoal[];
   goals2?: MatchGoal[];
+  pen_score?: [number, number];
+  score_pen?: [number, number];
   cards?: Array<{
     team: number;
     minute: number;
@@ -109,6 +114,7 @@ function mapMatch(m: WcupMatch): Match {
     flag2: m.flag2,
     status: normalizeStatus(m.status),
     score: m.score,
+    penScore: pickPenScoreFromWcup(m),
     liveMinute: m.live_minute,
     date: m.date,
     time: m.time,
@@ -128,7 +134,9 @@ async function fetchWcup(action: string, params: Record<string, string> = {}): P
 
 export async function fetchAllMatches(): Promise<Match[]> {
   const raw = await fetchWcup("all");
-  return raw.map(mapMatch).sort((a, b) => a.datetime - b.datetime);
+  const matches = raw.map(mapMatch).sort((a, b) => a.datetime - b.datetime);
+  await enrichMatchesWithPenalties(matches);
+  return matches;
 }
 
 export async function fetchLiveMatches(): Promise<Match[]> {

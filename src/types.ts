@@ -10,6 +10,7 @@ export interface Match {
   flag2: string;
   status: MatchStatus;
   score: [number, number] | null;
+  penScore: [number, number] | null;
   liveMinute: number | null;
   date: string;
   time: string;
