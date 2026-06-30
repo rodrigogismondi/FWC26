@@ -8,6 +8,7 @@ const FETCH_TIMEOUT_MS = 12_000;
 /** Shootout results not yet synced in wcup2026.org JSON/football feeds. */
 const PENALTY_FALLBACK: Readonly<Record<number, [number, number]>> = {
   73: [3, 4], // Germany 1–1 Paraguay (R32) — Paraguay advances on pens
+  74: [2, 3], // Netherlands 1–1 Morocco (R32) — Morocco advances on pens
 };
 
 function teamKey(team1: string, team2: string): string {

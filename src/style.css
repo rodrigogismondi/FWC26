@@ -814,6 +814,7 @@ a:hover {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .bk-icon-tbd {
