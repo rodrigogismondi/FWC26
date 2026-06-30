@@ -91,6 +91,8 @@ const strings = {
     mdYellowCard: "Yellow card · {player}",
     mdRedCard: "Red card · {player}",
     mdLoading: "Loading match details…",
+    penShort: "pens",
+    penResultShort: "{score1}–{score2} on pens",
   },
   pt: {
     title: "Copa do Mundo 2026",
@@ -172,6 +174,8 @@ const strings = {
     mdYellowCard: "Cartão amarelo · {player}",
     mdRedCard: "Cartão vermelho · {player}",
     mdLoading: "Carregando detalhes do jogo…",
+    penShort: "pênaltis",
+    penResultShort: "{score1}–{score2} nos pênaltis",
   },
 } as const;
 

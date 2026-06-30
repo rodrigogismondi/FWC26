@@ -1,3 +1,4 @@
+import { decidedByPenalties } from "./match-outcome";
 import type { Match } from "./types";
 import type { Lang } from "./i18n";
 import { LOCALE, t } from "./i18n";
@@ -54,9 +55,11 @@ function capitalizeLocale(text: string, lang: Lang): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function formatScore(match: Match): string {
+export function formatScore(match: Match, lang?: Lang): string {
   if (!match.score) return "–";
-  return `${match.score[0]} – ${match.score[1]}`;
+  const base = `${match.score[0]} – ${match.score[1]}`;
+  if (!lang || !decidedByPenalties(match) || !match.penScore) return base;
+  return `${base} (${match.penScore[0]}–${match.penScore[1]} ${t(lang, "penShort")})`;
 }
 
 export function statusLabel(status: Match["status"], lang: Lang): string {
